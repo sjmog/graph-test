@@ -40,8 +40,8 @@ function Line(origin, end) {
 }
 
 function Link(node, connectedNode, origin, end) {
-  function isCenter() {
-    return node.circle == 0
+  function Arc(bezierX, bezierY) {
+    context.arcTo(bezierX, bezierY, end.x, end.y, R * node.circle)
   }
 
   function isSameCircle() {
@@ -52,37 +52,84 @@ function Link(node, connectedNode, origin, end) {
     return !isSameCircle()
   }
 
+  function isPolarFlow() {
+    return (node.point == 'N' && connectedNode.point == 'W') || 
+           (node.point == 'N' && connectedNode.point == 'E') || 
+           (node.point == 'S' && connectedNode.point == 'W') ||
+           (node.point == 'S' && connectedNode.point == 'E')
+           
+  }
+
+  function isEquatorialFlow() {
+    return (node.point == 'W' && connectedNode.point == 'S') || 
+           (node.point == 'E' && connectedNode.point == 'S') || 
+           (node.point == 'W' && connectedNode.point == 'N') || 
+           (node.point == 'E' && connectedNode.point == 'N')
+  }
+
   context.strokeStyle = '#aaa'
   context.beginPath()
   context.moveTo(origin.x, origin.y)
 
-  if(isCenter() || isDifferentCircle()) {
+  if(isDifferentCircle()) {
     context.lineTo(end.x, end.y)
   }
 
   if(isSameCircle()) {
-    if(node.point == 'N' && connectedNode.point == 'W') {
-      context.arcTo(end.x, origin.y, end.x, end.y, R * node.circle)
+    if(isPolarFlow()) {
+      new Arc(end.x, origin.y)
     }
 
-    if(node.point == 'W' && connectedNode.point == 'S') {
-      context.arcTo(origin.x, end.y, end.x, end.y, R * node.circle)
+    if(isEquatorialFlow()) {
+      new Arc(origin.x, end.y)
     }
 
-    if((node.point == 'S' && connectedNode.point == 'SW') || (node.point == 'N' && connectedNode.point == 'NE')) {
-      context.arcTo((origin.x - (origin.x - end.x)/2), origin.y, end.x, end.y, R * node.circle)
+    if(node.point == 'NE' && connectedNode.point == 'NW') {
+      new Arc(origin.x - (origin.x - end.x)/2, origin.y - R * node.circle/Math.sqrt(2))
     }
 
-    if((node.point == 'SW' && connectedNode.point == 'W') || (node.point == 'NE' && connectedNode.point == 'E')) {
-      context.arcTo((origin.x - (origin.x - end.x)), (origin.y - (origin.y - end.y)/2), end.x, end.y, R * node.circle)
+    if(node.point == 'SW' && connectedNode.point == 'NW') {
+      new Arc(origin.x - R * node.circle/Math.sqrt(2), origin.y - (origin.y - end.y)/2)
     }
 
-    if(node.point == 'W' && connectedNode.point == 'NW') {
-      context.arcTo((end.x - (end.x - origin.x)), (origin.y - (origin.y - end.y)/2), end.x, end.y, R * node.circle)
+    if(node.point == 'NW' && connectedNode.point == 'NE') {
+      new Arc(end.x - (end.x - origin.x)/2, origin.y - R * node.circle/Math.sqrt(2))
     }
 
-    if(node.point == 'NW' && connectedNode.point == 'N') {
-      context.arcTo((origin.x - (origin.x - end.x)/2), end.y, end.x, end.y, R * node.circle)
+    if(node.point == 'SE' && connectedNode.point == 'NE') {
+      new Arc(origin.x + R * node.circle/Math.sqrt(2), origin.y - (origin.y - end.y)/2)
+    }
+
+    if(node.point == 'SW' && connectedNode.point == 'SE') {
+      new Arc(origin.x + (end.x - origin.x)/2, origin.y + R * node.circle/Math.sqrt(2))
+    }
+
+    if(node.point == 'SE' && connectedNode.point == 'SW') {
+      new Arc(origin.x - (origin.x - end.x)/2, origin.y + R * node.circle/Math.sqrt(2))
+    }
+
+    if(node.point == 'NW' && connectedNode.point == 'SW') {
+      new Arc(end.x - R * node.circle/Math.sqrt(2), end.y - (end.y - origin.y)/2)
+    }
+
+    if(node.point == 'NE' && connectedNode.point == 'SE') {
+      new Arc(origin.x + R * node.circle/Math.sqrt(2), end.y - (end.y - origin.y)/2)
+    }
+
+    if((node.point == 'S' && connectedNode.point == 'SW') || (node.point == 'N' && connectedNode.point == 'NE') || (node.point == 'N' && connectedNode.point == 'NW') || (node.point == 'S' && connectedNode.point == 'SE')) {
+      new Arc((origin.x - (origin.x - end.x)/2), origin.y)
+    }
+
+    if((node.point == 'SW' && connectedNode.point == 'W') || (node.point == 'NE' && connectedNode.point == 'E') || (node.point == 'NW' && connectedNode.point == 'W') || (node.point == 'SE' && connectedNode.point == 'E')) {
+      new Arc(end.x, (origin.y - (origin.y - end.y)/2))
+    }
+
+    if((node.point == 'W' && connectedNode.point == 'NW') || (node.point == 'W' && connectedNode.point == 'SW') || (node.point == 'E' && connectedNode.point == 'NE') || (node.point == 'E' && connectedNode.point == 'SE')) {
+      new Arc(origin.x, (origin.y - (origin.y - end.y)/2))
+    }
+
+    if((node.point == 'NW' && connectedNode.point == 'N') || (node.point == 'SW' && connectedNode.point == 'S') || (node.point == 'SE' && connectedNode == 'S') || (node.point == 'NE' && connectedNode.point == 'N')) {
+      new Arc((origin.x - (origin.x - end.x)/2), end.y)
     }
   }
 
@@ -143,22 +190,23 @@ const Graph = function(nodes) {
 }
 
 const TOPIC_DATA = [ 
-  { id: 1, name: 'Arrays 1', location: '0', connected: [2, 15] },
-  { id: 15, name: 'Arrays 1i', location: '1 SE', connected: [16] },
-  { id: 16, name: 'Arrays 1ii', location: '2 SE' },
-  { id: 2, name: 'Arrays 2', location: '1 N', connected: [3] },
-  { id: 3, name: 'Arrays 3', location: '1 W', connected: [4] }, 
-  { id: 4, name: 'Arrays 4', location: '1 S', connected: [5] }, 
-  { id: 5, name: 'Hashes 1', location: '2 S', connected: [6] },
-  { id: 6, name: 'Hashes 2', location: '2 SW', connected: [7] },
-  { id: 7, name: 'Hashes 3', location: '2 W', connected: [8] },
-  { id: 8, name: 'Hashes 4', location: '2 NW', connected: [9] },
-  { id: 9, name: 'Enumerables 1', location: '2 N', connected: [10] },
-  { id: 10, name: 'Enumerables 2', location: '2 NE', connected: [11, 14] },
-  { id: 14, name: 'Enumerables 2i', location: '2 E' },
-  { id: 11, name: 'Enumerables 3', location: '3 NE', connected: [12] },
-  { id: 12, name: 'Enumerables 4', location: '3 E', connected: [13] },
-  { id: 13, name: 'Graphs 1', location: '4 E' }
+  { id: 1, name: '1', location: '1 NW', connected: [4] },
+  { id: 2, name: '2', location: '1 NE', connected: [1] },
+  { id: 3, name: '3', location: '1 SE', connected: [2] },
+  { id: 4, name: '4', location: '1 SW', connected: [3] },
+  { id: 5, name: '5', location: '2 NW', connected: [6] },
+  { id: 6, name: '6', location: '2 NE', connected: [7] },
+  { id: 7, name: '7', location: '2 SE', connected: [8] },
+  { id: 8, name: '8', location: '2 SW', connected: [5] },
+  { id: 9, name: '9', location: '3 NW', connected: [10] },
+  { id: 10, name: '10', location: '3 NE', connected: [11] },
+  { id: 11, name: '11', location: '3 SE', connected: [12] },
+  { id: 12, name: '12', location: '3 SW', connected: [9] },
+
+  { id: 13, name: '13', location: '4 N', connected: [14] },
+  { id: 14, name: '14', location: '4 W', connected: [15] },
+  { id: 15, name: '15', location: '4 SE', connected: [16] },
+  { id: 16, name: '16', location: '4 SW', connected: [13] },
 ]
 
 const NODES = TOPIC_DATA.map(nodeData => new Node(nodeData.id, nodeData.name, nodeData.location, nodeData.connected))
