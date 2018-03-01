@@ -16,14 +16,15 @@ var R = 100
 var Rnode = 20
 
 function Circle(origin, radius) {
+  context.strokeStyle = '#222'
   context.beginPath()
-  context.arc(origin.x, origin.y, radius, 0, 2*Math.PI)
+  context.arc(origin.x, origin.y, radius, 0, 2 * Math.PI)
   context.stroke()
   context.fillStyle = '#fff'
   context.fill()
 }
 
-function Text(origin, text) {
+function Label(origin, text) {
   context.fillStyle = '#222'
   context.font = '16px sans-serif'
   context.textAlign = 'center'
@@ -31,124 +32,136 @@ function Text(origin, text) {
 }
 
 function Line(origin, end) {
+  context.strokeStyle = '#aaa'
   context.beginPath()
   context.moveTo(origin.x, origin.y)
   context.lineTo(end.x, end.y)
   context.stroke()
 }
 
-// axes //
+function Link(node, connectedNode, origin, end) {
+  function isCenter() {
+    return node.circle == 0
+  }
 
-// new Circle(center, 0)
-// new Circle(center, R * 2)
-// new Circle(center, R)
+  function isSameCircle() {
+    return node.circle == connectedNode.circle
+  }
 
-// new Line(center, new Coordinate(centerWidth, centerHeight - (R * 3)))
-// new Line(center, new Coordinate(centerWidth, centerHeight + (R * 3)))
-// new Line(center, new Coordinate(centerWidth - (R * 3), centerHeight))
-// new Line(center, new Coordinate(centerWidth + (R * 3), centerHeight))
+  function isDifferentCircle() {
+    return !isSameCircle()
+  }
 
-// new Line(center, new Coordinate(centerWidth - (R * 3), centerHeight - (R * 3)))
-// new Line(center, new Coordinate(centerWidth + (R * 3), centerHeight + (R * 3)))
-// new Line(center, new Coordinate(centerWidth - (R * 3), centerHeight + (R * 3)))
-// new Line(center, new Coordinate(centerWidth + (R * 3), centerHeight - (R * 3)))
+  context.strokeStyle = '#aaa'
+  context.beginPath()
+  context.moveTo(origin.x, origin.y)
 
-function groupBy(list, keyGetter) {
-    const map = new Map();
-    list.forEach((item) => {
-        const key = keyGetter(item);
-        if (!map.has(key)) {
-            map.set(key, [item]);
-        } else {
-            map.get(key).push(item);
-        }
-    });
-    return map;
+  if(isCenter() || isDifferentCircle()) {
+    context.lineTo(end.x, end.y)
+  }
+
+  if(isSameCircle()) {
+    if(node.point == 'N' && connectedNode.point == 'W') {
+      context.arcTo(end.x, origin.y, end.x, end.y, R * node.circle)
+    }
+
+    if(node.point == 'W' && connectedNode.point == 'S') {
+      context.arcTo(origin.x, end.y, end.x, end.y, R * node.circle)
+    }
+
+    if((node.point == 'S' && connectedNode.point == 'SW') || (node.point == 'N' && connectedNode.point == 'NE')) {
+      context.arcTo((origin.x - (origin.x - end.x)/2), origin.y, end.x, end.y, R * node.circle)
+    }
+
+    if((node.point == 'SW' && connectedNode.point == 'W') || (node.point == 'NE' && connectedNode.point == 'E')) {
+      context.arcTo((origin.x - (origin.x - end.x)), (origin.y - (origin.y - end.y)/2), end.x, end.y, R * node.circle)
+    }
+
+    if(node.point == 'W' && connectedNode.point == 'NW') {
+      context.arcTo((end.x - (end.x - origin.x)), (origin.y - (origin.y - end.y)/2), end.x, end.y, R * node.circle)
+    }
+
+    if(node.point == 'NW' && connectedNode.point == 'N') {
+      context.arcTo((origin.x - (origin.x - end.x)/2), end.y, end.x, end.y, R * node.circle)
+    }
+  }
+
+  context.stroke()
 }
 
-function zip (arr1, arr2) {
-  return arr1.map(function(element, index) {
-    return [element, arr2[index]];
-  });
-}
-
-const Node = function(id, name) {
+const Node = function(id, name, location, connected = []) {
   this.id = id
   this.name = name
+  this.circle = location.split(" ")[0]
+  this.point = location.split(" ")[1]
+  this.location = new Location(this.circle, this.point)
+  this.connected = connected
+}
+
+const Location = function(circle, point) {
+  const lookup = {
+    'N':  new Coordinate(centerWidth, centerHeight - (R * circle)),
+    'NE': new Coordinate(centerWidth + ((R * circle) * Math.cos(Math.PI / 4)), centerHeight - ((R * circle) * Math.sin(Math.PI / 4))),
+    'E':  new Coordinate(centerWidth + (R * circle), centerHeight),
+    'SE': new Coordinate(centerWidth + (R * circle * Math.cos(Math.PI / 4)), centerHeight + (R * circle * Math.sin(Math.PI / 4))),
+    'S':  new Coordinate(centerWidth, centerHeight + (R * circle)),
+    'SW': new Coordinate(centerWidth - ((R * circle) * Math.cos(Math.PI / 4)), centerHeight + ((R * circle) * Math.sin(Math.PI / 4))),
+    'W':  new Coordinate(centerWidth - (R * circle), centerHeight),
+    'NW': new Coordinate(centerWidth - ((R * circle) * Math.cos(Math.PI / 4)), centerHeight - ((R * circle) * Math.sin(Math.PI / 4)))
+  }
+
+  if(circle == '0') {
+    return new Coordinate(centerWidth, centerHeight)
+  }
+
+  return lookup[point]
 }
 
 const Graph = function(nodes) {
-  this.locations = [
-    new Coordinate(centerWidth, centerHeight),      // center
-    new Coordinate(centerWidth, centerHeight - R),  // C1 north
-    new Coordinate(centerWidth - R, centerHeight),  // C1 west
-    new Coordinate(centerWidth, centerHeight + R),  // C1 south
-    new Coordinate(centerWidth + R, centerHeight),  // C1 east
-    new Coordinate(centerWidth + (R * 2), centerHeight), // C2 east
-    new Coordinate(centerWidth + (R * 2 * Math.cos(Math.PI / 4)), centerHeight + (R * 2 * Math.sin(Math.PI / 4))), // C2 south east
-    new Coordinate(centerWidth, centerHeight + (R * 2)), // C2 south
-    new Coordinate(centerWidth - (R * 2 * Math.cos(Math.PI / 4)), centerHeight + (R * 2 * Math.sin(Math.PI / 4))), // C2 south west
-    new Coordinate(centerWidth - (R * 2), centerHeight), // C2 west
-    new Coordinate(centerWidth - (R * 2 * Math.cos(Math.PI / 4)), centerHeight - (R * 2 * Math.sin(Math.PI / 4))), // C2 north west
-    new Coordinate(centerWidth, centerHeight - (R * 2)), // C2 north
-    new Coordinate(centerWidth + (R * 2 * Math.cos(Math.PI / 4)), centerHeight - (R * 2 * Math.sin(Math.PI / 4)))  // C2 north east
-  ]
-
   this.nodes = nodes
 
-  setCombinations = () => {
-    let combinations = []
-
-    for (var i = 0; i < this.nodes.length; i++) {
-      for (var j = 0; j < this.locations.length; j++) {
-        combinations.push({ node: this.nodes[i], location: this.locations[j] });
-      }
+  connectedNodes = (node) => {
+    if(node.connected.length == 0) {
+      return []
     }
 
-    return combinations
-  }
-
-  this.combinations = setCombinations()
-
-  draw = (combination) => {
-    combination.forEach((nodeWithLocation) => {
-      new Circle(nodeWithLocation.location, Rnode)
-      new Text(nodeWithLocation.location, nodeWithLocation.node.name)
-    })
-  }
-
-  uniqueCombination = (combinations = []) => {
-    if(combinations.length == this.nodes.length) { return combinations }
-
-    let first = combinations[0]
-    let others = combinations.slice(1)
-    let filtered = others.filter((nodeWithLocation) => (nodeWithLocation.node.name !== first.node.name) && (nodeWithLocation.location !== first.location))
-    
-    return uniqueCombination(filtered.concat(first))
+    return this.nodes.filter(potentialConnectedNode => node.connected.includes(potentialConnectedNode.id))
   }
 
   this.layout = () => {
-    draw(uniqueCombination(this.combinations))
+    this.nodes.forEach((node) => {
+      connectedNodes(node).forEach((connectedNode) => {
+        new Link(node, connectedNode, node.location, connectedNode.location)
+      })
+    })
+
+    this.nodes.forEach((node) => {
+      new Circle(node.location, Rnode)
+      new Label(node.location, node.name)
+    })
   }
 }
 
 const TOPIC_DATA = [ 
-  { id: 1, name: 'Arrays 1'},  
-  { id: 2, name: 'Arrays 2' }, 
-  { id: 3, name: 'Arrays 3' }, 
-  { id: 4, name: 'Arrays 4' }, 
-  { id: 5, name: 'Hashes 1' },
-  { id: 6, name: 'Hashes 2' },
-  { id: 7, name: 'Hashes 3' },
-  { id: 8, name: 'Hashes 4' },
-  { id: 9, name: 'Enumerables 1' },
-  { id: 10, name: 'Enumerables 2' },
-  { id: 11, name: 'Enumerables 3' },
-  { id: 12, name: 'Enumerables 4' },
-  { id: 13, name: 'Graphs 1' }
+  { id: 1, name: 'Arrays 1', location: '0', connected: [2, 15] },
+  { id: 15, name: 'Arrays 1i', location: '1 SE', connected: [16] },
+  { id: 16, name: 'Arrays 1ii', location: '2 SE' },
+  { id: 2, name: 'Arrays 2', location: '1 N', connected: [3] },
+  { id: 3, name: 'Arrays 3', location: '1 W', connected: [4] }, 
+  { id: 4, name: 'Arrays 4', location: '1 S', connected: [5] }, 
+  { id: 5, name: 'Hashes 1', location: '2 S', connected: [6] },
+  { id: 6, name: 'Hashes 2', location: '2 SW', connected: [7] },
+  { id: 7, name: 'Hashes 3', location: '2 W', connected: [8] },
+  { id: 8, name: 'Hashes 4', location: '2 NW', connected: [9] },
+  { id: 9, name: 'Enumerables 1', location: '2 N', connected: [10] },
+  { id: 10, name: 'Enumerables 2', location: '2 NE', connected: [11, 14] },
+  { id: 14, name: 'Enumerables 2i', location: '2 E' },
+  { id: 11, name: 'Enumerables 3', location: '3 NE', connected: [12] },
+  { id: 12, name: 'Enumerables 4', location: '3 E', connected: [13] },
+  { id: 13, name: 'Graphs 1', location: '4 E' }
 ]
 
-const NODES = TOPIC_DATA.map(nodeData => new Node(nodeData.id, nodeData.name))
+const NODES = TOPIC_DATA.map(nodeData => new Node(nodeData.id, nodeData.name, nodeData.location, nodeData.connected))
 
 graph = new Graph(NODES)
 
